@@ -1,0 +1,37 @@
+kody en13
+
+
+1000 - user
+1100
+1200
+1300 --address_completed
+
+
+
+2000- departament
+
+
+3000 - maszyny
+3050 - materialy do produkcji
+3060 - transakcja materialow
+3100 - operacje maszyn
+3200 - awarie maszyn
+3300 - statusy awarii
+
+4000 - urlop wniosek
+4100 - tabela z urlapomi usera
+
+5000 - user profile
+
+6000 - edukacja
+
+7000 - swiadectwa pracy
+
+8000 - produkty
+8800 - schematy produkcji
+8900 - etapy schamatu produkcji
+
+
+9000 - zamowienia
+9100 - produkty w zamowieniu
+9200 - tworzenie produktu przez pracownika

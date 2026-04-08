@@ -1,0 +1,14 @@
+<svg width="944" height="212" viewBox="0 0 944 212" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="944" height="212" rx="14" fill="#F5F5F5"/>
+  <path d="M0 4C0 1.79086 1.79086 0 4 0H238C240.209 0 242 1.79086 242 4V208C242 210.209 240.209 212 238 212H4C1.79086 212 0 210.209 0 208V4Z" fill="#E42B1E"/>
+  <path d="M19 24C46 47 68 73 84 102C69 100 54 94 39 84C33 63 26 43 19 24Z" fill="white"/>
+  <path d="M38 18C62 44 82 72 95 100C88 100 81 99 74 97C64 71 52 45 38 18Z" fill="white"/>
+  <path d="M58 12C78 38 94 68 104 98C99 98 95 98 91 97C84 71 73 43 58 12Z" fill="white"/>
+  <path d="M79 8C93 30 104 60 110 93C107 93 104 93 101 93C97 67 90 39 79 8Z" fill="white"/>
+  <path d="M0 150C26 142 58 137 95 136C129 136 158 141 183 150C187 152 190 155 192 159C155 152 122 149 93 149C63 149 32 153 0 161V150Z" fill="white"/>
+  <path d="M0 168C30 160 63 156 100 156C132 156 161 160 186 168C190 169 193 172 195 176C163 170 131 167 100 167C68 167 35 171 0 179V168Z" fill="white"/>
+  <path d="M0 187C33 178 69 173 109 173C141 173 170 177 196 184C201 186 205 189 208 193C171 187 137 184 108 184C74 184 38 189 0 198V187Z" fill="white"/>
+  <text x="284" y="66" fill="#242424" font-family="Arial, Helvetica, sans-serif" font-size="58" font-weight="400">Państwowa Akademia</text>
+  <text x="284" y="129" fill="#242424" font-family="Arial, Helvetica, sans-serif" font-size="58" font-weight="400">Nauk Stosowanych</text>
+  <text x="284" y="194" fill="#242424" font-family="Arial, Helvetica, sans-serif" font-size="56" font-weight="300">w Krośnie</text>
+</svg>
