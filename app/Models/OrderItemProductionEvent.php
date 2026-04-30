@@ -40,4 +40,9 @@ class OrderItemProductionEvent extends Model
     {
         return $this->belongsTo(User::class, 'user_id');
     }
+
+    public function performance()
+    {
+        return $this->hasOne(ProductionPerformance::class, 'order_item_production_event_id');
+    }
 }

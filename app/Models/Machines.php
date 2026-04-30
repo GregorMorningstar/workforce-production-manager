@@ -91,5 +91,10 @@ protected static function booted()
         return $this->hasMany(MachineFailure::class, 'machine_id');
     }
 
+    public function productionPerformances(): HasMany
+    {
+        return $this->hasMany(ProductionPerformance::class, 'machine_id');
+    }
+
 
 }

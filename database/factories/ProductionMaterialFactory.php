@@ -12,6 +12,19 @@ class ProductionMaterialFactory extends Factory
 {
     protected $model = ProductionMaterial::class;
 
+    private const CHAIR_MATERIALS = [
+        ['name' => 'Profil stalowy 20x20x1.5', 'group' => 'metal', 'form' => 'beams', 'unit_qty' => [100, 1800]],
+        ['name' => 'Rura stalowa fi 22x1.5', 'group' => 'metal', 'form' => 'beams', 'unit_qty' => [100, 1400]],
+        ['name' => 'Pret stalowy fi 10', 'group' => 'metal', 'form' => 'beams', 'unit_qty' => [100, 1200]],
+        ['name' => 'Pianka tapicerska T35 40 mm', 'group' => 'upholstery', 'form' => 'piece', 'unit_qty' => [200, 1600]],
+        ['name' => 'Tkanina obiciowa polyester 320 g', 'group' => 'upholstery', 'form' => 'roll', 'unit_qty' => [150, 1200]],
+        ['name' => 'Siatka mesh oparcia 3D', 'group' => 'upholstery', 'form' => 'roll', 'unit_qty' => [100, 800]],
+        ['name' => 'Farba proszkowa RAL 9005', 'group' => 'finishing', 'form' => 'bag_25kg', 'unit_qty' => [50, 600]],
+        ['name' => 'Sruby M6x25 kl.8.8', 'group' => 'assembly', 'form' => 'box', 'unit_qty' => [2000, 12000]],
+        ['name' => 'Nit stalowy 4x10', 'group' => 'assembly', 'form' => 'box', 'unit_qty' => [1500, 9000]],
+        ['name' => 'Stopki PP antyposlizgowe', 'group' => 'plastic', 'form' => 'piece', 'unit_qty' => [1000, 5000]],
+    ];
+
     public function definition()
     {
         $materialNames = [
@@ -70,6 +83,22 @@ class ProductionMaterialFactory extends Factory
                     'unit' => $faker->randomElement(['pcs', 'kg', 'm']),
                 ]);
             }
+        });
+    }
+
+    public function chairProductionMaterial(): self
+    {
+        return $this->state(function () {
+            $material = $this->faker->randomElement(self::CHAIR_MATERIALS);
+
+            return [
+                'name' => $material['name'],
+                'description' => 'Material technologiczny dla linii produkcyjnej krzesel.',
+                'group_material' => $material['group'],
+                'material_form' => $material['form'],
+                'stock_empty_alarm' => $this->faker->numberBetween(30, 120),
+                'available_quantity' => $this->faker->randomFloat(2, $material['unit_qty'][0], $material['unit_qty'][1]),
+            ];
         });
     }
 }

@@ -75,7 +75,9 @@ class DatabaseSeeder extends Seeder
             \Database\Seeders\MachineSeeder::class,
             \Database\Seeders\OperationMachineSeeder::class,
             \Database\Seeders\ProductionMaterialSeeder::class,
+            \Database\Seeders\ChairProductionProcessSeeder::class,
             \Database\Seeders\ProductionPlanSeeder::class,
+            \Database\Seeders\ProductionPerformanceSeeder::class,
         ]);
     }
 }

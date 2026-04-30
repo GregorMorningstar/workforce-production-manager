@@ -24,3 +24,15 @@ Broadcast::channel('chat.{userId}', function ($user, $userId) {
 Broadcast::channel('chat', function ($user) {
     return ['id' => $user->id, 'name' => $user->name];
 });
+
+Broadcast::channel('performance.moderator', function ($user) {
+    return (string) ($user->role?->value ?? '') === 'moderator';
+});
+
+Broadcast::channel('performance.user.{userId}', function ($user, $userId) {
+    return (int) $user->id === (int) $userId;
+});
+
+Broadcast::channel('performance.department.{departmentId}', function ($user, $departmentId) {
+    return (int) ($user->department_id ?? 0) === (int) $departmentId;
+});

@@ -6,6 +6,7 @@ use App\Models\Machines;
 use App\Repositories\Contracts\MachinesRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use App\Enums\MachineStatus;
+use Illuminate\Support\Facades\DB;
 
 class EloquentMachinesRepository implements MachinesRepositoryInterface
 {
@@ -81,6 +82,52 @@ class EloquentMachinesRepository implements MachinesRepositoryInterface
 
     public function getUserMachines(int $userId, int $perPage = 15): LengthAwarePaginator
     {
-        return $this->model->where('user_id', $userId)->with('operator','operations','machineFailures','department')->paginate($perPage);
+        $productionMachineIds = DB::table('order_item_production_plans')
+            ->where('assigned_user_id', $userId)
+            ->whereNotNull('machine_id')
+            ->distinct()
+            ->pluck('machine_id');
+
+        $failureMachineIds = DB::table('machine_failures')
+            ->where('user_id', $userId)
+            ->whereNotNull('machine_id')
+            ->distinct()
+            ->pluck('machine_id');
+
+        $ids = $productionMachineIds
+            ->merge($failureMachineIds)
+            ->filter()
+            ->unique()
+            ->values();
+
+        return $this->model->newQuery()
+            ->whereIn('id', $ids)
+            ->with([
+                'operator',
+                'operations',
+                'department',
+                'machineFailures' => fn ($q) => $q->where('user_id', $userId)->latest('reported_at'),
+            ])
+            ->orderBy('name')
+            ->paginate($perPage);
+    }
+
+    public function canUserReportFailureForMachine(int $userId, int $machineId): bool
+    {
+        $isAssignedInProduction = DB::table('order_item_production_plans')
+            ->where('assigned_user_id', $userId)
+            ->where('machine_id', $machineId)
+            ->exists();
+
+        if ($isAssignedInProduction) {
+            return true;
+        }
+
+        $alreadyReportedByUser = DB::table('machine_failures')
+            ->where('user_id', $userId)
+            ->where('machine_id', $machineId)
+            ->exists();
+
+        return $alreadyReportedByUser;
     }
 }

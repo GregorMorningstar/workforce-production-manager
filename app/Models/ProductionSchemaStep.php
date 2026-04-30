@@ -23,6 +23,8 @@ class ProductionSchemaStep extends Model
         'production_time_seconds',
         'stock_empty_alarm',
         'notes',
+        'output_product_name',
+        'output_quantity',
     ];
 
  protected static function booted()

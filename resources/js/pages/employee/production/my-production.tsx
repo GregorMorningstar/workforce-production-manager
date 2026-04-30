@@ -35,6 +35,18 @@ type Props = {
 
 const fmt = (value?: string | null) => value || '-';
 
+const fmtDate = (value?: string | null): string => {
+    if (!value) return '-';
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return value;
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    const hh = String(d.getHours()).padStart(2, '0');
+    const min = String(d.getMinutes()).padStart(2, '0');
+    return `${dd}.${mm}.${yyyy} ${hh}:${min}`;
+};
+
 export default function EmployeeMyProduction({ plans }: Props) {
     const page = usePage();
     const [activePlanId, setActivePlanId] = useState<number | null>(null);
@@ -158,23 +170,23 @@ export default function EmployeeMyProduction({ plans }: Props) {
                                         <tr className="hover:bg-gray-50">
                                             <td className="px-3 py-2">{plan.barcode ?? '-'}</td>
                                             <td className="px-3 py-2">
-                                                <div className="inline-flex flex-col items-center border rounded px-2 py-1">
-                                                    <Barcode value={String(plan.order?.barcode ?? '-') } format="CODE128" width={1} height={24} displayValue={false} />
-                                                    <span className="text-[10px] text-gray-600 mt-1">{plan.order?.barcode ?? '-'}</span>
+                                                <div className="inline-flex flex-col items-center">
+                                                    <Barcode value={String(plan.order?.barcode ?? '0')} format="CODE128" width={1.2} height={32} displayValue={false} margin={2} />
+                                                    <span className="text-[10px] font-mono text-gray-600">{plan.order?.barcode ?? '-'}</span>
                                                 </div>
                                             </td>
                                             <td className="px-3 py-2">{plan.item?.name ?? '-'}</td>
                                             <td className="px-3 py-2">{plan.operation?.operation_name ?? '-'}</td>
                                             <td className="px-3 py-2">{plan.machine?.name ?? '-'}</td>
                                             <td className="px-3 py-2">
-                                                <div className="inline-flex flex-col items-center border rounded px-2 py-1">
-                                                    <Barcode value={String(plan.machine?.barcode ?? '-') } format="CODE128" width={1} height={24} displayValue={false} />
-                                                    <span className="text-[10px] text-gray-600 mt-1">{plan.machine?.barcode ?? '-'}</span>
+                                                <div className="inline-flex flex-col items-center">
+                                                    <Barcode value={String(plan.machine?.barcode ?? '0')} format="CODE128" width={1.2} height={32} displayValue={false} margin={2} />
+                                                    <span className="text-[10px] font-mono text-gray-600">{plan.machine?.barcode ?? '-'}</span>
                                                 </div>
                                             </td>
                                             <td className="px-3 py-2">{plan.order_quantity ?? 0}</td>
                                             <td className="px-3 py-2">{plan.status}</td>
-                                            <td className="px-3 py-2">{fmt(plan.planned_start_at)}</td>
+                                            <td className="px-3 py-2 whitespace-nowrap">{fmtDate(plan.planned_start_at)}</td>
                                             <td className="px-3 py-2">
                                                 <button
                                                     type="button"

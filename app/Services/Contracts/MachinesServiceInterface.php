@@ -14,5 +14,6 @@ public function getAllmachinesWithOperators(): LengthAwarePaginator;
 public function setLastFailureDate(int $machineId): bool;
 public function updateStatus(int $machineId, string $status): bool;
 public function getUserMachines(int $userId, int $perPage = 15): LengthAwarePaginator;
+public function canUserReportFailureForMachine(int $userId, int $machineId): bool;
 
 }

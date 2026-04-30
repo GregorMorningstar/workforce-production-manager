@@ -171,4 +171,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(LeaveBalance::class, 'user_id');
     }
+
+    public function productionPerformances(): HasMany
+    {
+        return $this->hasMany(ProductionPerformance::class, 'user_id');
+    }
 }

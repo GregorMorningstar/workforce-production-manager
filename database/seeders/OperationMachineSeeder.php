@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use App\Models\Machines;
+use App\Models\Operationmachine;
 
 class OperationMachineSeeder extends Seeder
 {
@@ -45,28 +46,13 @@ class OperationMachineSeeder extends Seeder
                     ->first();
             }
 
-            $barcode = null;
-            if ($machine && !empty($machine->barcode)) {
-                $barcode = $machine->barcode;
-            } else {
-                // generate simple barcode-like token from model
-                $raw = $machine->model ?? $r['machine_name'];
-                $trans = @iconv('UTF-8', 'ASCII//TRANSLIT', $raw) ?: $raw;
-                $barcode = preg_replace('/[^A-Z0-9]/i', '', strtoupper($trans));
-                $barcode = substr($barcode, 0, 13);
-                if (strlen($barcode) < 6) {
-                    $barcode = strtoupper(substr(md5($raw), 0, 13));
-                }
-            }
-
-            DB::table('operationmachines')->insert([
-                'barcode' => $barcode,
+            // Use Eloquent create so Operationmachine::booted() generates barcode with 3100 prefix.
+            Operationmachine::create([
+                'barcode' => null,
                 'machine_id' => $machine ? $machine->id : null,
                 'operation_name' => $r['operation_name'],
                 'description' => $r['description'] ?? null,
                 'changeover_time' => $r['changeover'],
-                'created_at' => now(),
-                'updated_at' => now(),
             ]);
         }
 

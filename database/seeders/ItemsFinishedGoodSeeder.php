@@ -4,16 +4,15 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\ItemsFinishedGood;
+use Illuminate\Support\Facades\File;
 
 class ItemsFinishedGoodSeeder extends Seeder
 {
     public function run()
     {
-        // Ensure image directory exists
-        $imageDir = public_path('storage/image');
-        if (!is_dir($imageDir)) {
-            mkdir($imageDir, 0755, true);
-        }
+        // Use the public disk path directly to avoid broken/missing public/storage symlink issues.
+        $imageDir = storage_path('app/public/image');
+        File::ensureDirectoryExists($imageDir);
 
         // Find existing images in the folder
         $existing = glob($imageDir . '/*.{jpg,jpeg,png,gif}', GLOB_BRACE);

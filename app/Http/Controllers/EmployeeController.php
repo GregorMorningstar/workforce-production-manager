@@ -17,6 +17,7 @@ use App\Services\Contracts\EducationServiceInterface;
 use App\Services\Contracts\UserProfileServiceInterface;
 use App\Repositories\Contracts\FlagRepositoryInterface;
 use App\Services\Contracts\EmploymentCertificateServiceInterface;
+use App\Services\PerformanceTrackingService;
 use Inertia\Inertia;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
@@ -28,7 +29,8 @@ class EmployeeController extends Controller
         private readonly UserProfileServiceInterface $userProfileService,
         private readonly FlagRepositoryInterface $flagRepository,
         private readonly EducationServiceInterface $educationService,
-        private readonly EmploymentCertificateServiceInterface $employmentCertificateService
+        private readonly EmploymentCertificateServiceInterface $employmentCertificateService,
+        private readonly PerformanceTrackingService $performanceTrackingService,
     ) {}
 
     public function index()
@@ -798,6 +800,7 @@ class EmployeeController extends Controller
     {
         $validated = $request->validate([
             'task_plan_id' => ['required', 'integer', 'exists:order_item_production_plans,id'],
+            'machine_barcode' => ['required', 'string', 'size:13'],
             'operation_barcode' => ['required', 'string', 'size:13'],
         ]);
 
@@ -822,8 +825,32 @@ class EmployeeController extends Controller
             return back()->with('error', 'Barcode operacji nie pasuje do wybranego zadania.');
         }
 
-        if ($task->status === OrderItemProductionPlanStatus::ZAKONCZONO_PROCES->value) {
-            return back()->with('error', 'To zadanie zostało już zakończone.');
+        if (($task->machine?->barcode ?? null) !== $validated['machine_barcode']) {
+            return back()->with('error', 'Barcode maszyny nie pasuje do wybranego zadania.');
+        }
+
+        $notes = $this->decodeNotes($task->notes);
+        $requiredCycles = max(1, (int) ($task->order_quantity ?? 1));
+        $completedCycles = max(0, (int) ($notes['completed_cycles'] ?? 0));
+
+        // Backward compatibility: older finished records may not have completed_cycles in notes.
+        if ($completedCycles === 0 && $task->status === OrderItemProductionPlanStatus::ZAKONCZONO_PROCES->value) {
+            $completedCycles = 1;
+        }
+
+        if ($completedCycles >= $requiredCycles) {
+            return back()->with('error', 'To zadanie zostało już wykonane ' . $requiredCycles . 'x i nie można go ponownie uruchomić.');
+        }
+
+        if (
+            $task->status === OrderItemProductionPlanStatus::ROZPOCZETO_PROCES->value
+            && (!empty($notes['task_finished_at']) || !empty($task->planned_end_at))
+        ) {
+            // Recover stale state: task is marked started but already has finish markers.
+            $task->status = OrderItemProductionPlanStatus::DODANO_PRACOWNIKA->value;
+            $task->save();
+        } elseif ($task->status === OrderItemProductionPlanStatus::ROZPOCZETO_PROCES->value) {
+            return back()->with('error', 'To zadanie jest już rozpoczęte.');
         }
 
         $machine = Machines::query()->find($task->machine_id);
@@ -832,15 +859,16 @@ class EmployeeController extends Controller
                 || ((int) ($machine->last_items_finished_good_id ?? 0) !== (int) ($task->items_finished_good_id ?? 0)))
             : false;
 
-        $notes = $this->decodeNotes($task->notes);
         if ($changeoverRequired && empty($notes['changeover_ended_at'])) {
             return back()->with('error', 'Najpierw zakończ przezbrojenie dla tego zadania.');
         }
 
         $task->status = OrderItemProductionPlanStatus::ROZPOCZETO_PROCES->value;
         $task->planned_start_at = now();
+        $task->planned_end_at = null;
 
         $notes['task_started_at'] = now()->toDateTimeString();
+        $notes['task_finished_at'] = null;
         $notes = $this->appendActivityLog($notes, 'Rozpoczęto produkcję zadania.');
         $task->notes = json_encode($notes, JSON_UNESCAPED_UNICODE);
 
@@ -854,6 +882,7 @@ class EmployeeController extends Controller
     {
         $validated = $request->validate([
             'task_plan_id' => ['required', 'integer', 'exists:order_item_production_plans,id'],
+            'machine_barcode' => ['required', 'string', 'size:13'],
             'operation_barcode' => ['required', 'string', 'size:13'],
         ]);
 
@@ -878,15 +907,35 @@ class EmployeeController extends Controller
             return back()->with('error', 'Barcode operacji nie pasuje do zadania.');
         }
 
+        if (($task->machine?->barcode ?? null) !== $validated['machine_barcode']) {
+            return back()->with('error', 'Barcode maszyny nie pasuje do zadania.');
+        }
+
         if ($task->status !== OrderItemProductionPlanStatus::ROZPOCZETO_PROCES->value) {
             return back()->with('error', 'Najpierw rozpocznij zadanie.');
         }
 
+        $notes = $this->decodeNotes($task->notes);
+        $requiredCycles = max(1, (int) ($task->order_quantity ?? 1));
+        $completedCycles = max(0, (int) ($notes['completed_cycles'] ?? 0));
+
+        // Backward compatibility: older finished records may not have completed_cycles in notes.
+        if ($completedCycles === 0 && $task->status === OrderItemProductionPlanStatus::ZAKONCZONO_PROCES->value) {
+            $completedCycles = 1;
+        }
+
+        if ($completedCycles >= $requiredCycles) {
+            return back()->with('error', 'To zadanie zostało już wykonane ' . $requiredCycles . 'x i nie można go ponownie zakończyć.');
+        }
+
+        $nextCompletedCycles = $completedCycles + 1;
+        $isFinalCycle = $nextCompletedCycles >= $requiredCycles;
+
         $endAt = now();
         $task->planned_end_at = $endAt;
-        $task->status = OrderItemProductionPlanStatus::ZAKONCZONO_PROCES->value;
-
-        $notes = $this->decodeNotes($task->notes);
+        $task->status = $isFinalCycle
+            ? OrderItemProductionPlanStatus::ZAKONCZONO_PROCES->value
+            : OrderItemProductionPlanStatus::DODANO_PRACOWNIKA->value;
 
         $notes['task_finished_at'] = $endAt->toDateTimeString();
 
@@ -900,10 +949,12 @@ class EmployeeController extends Controller
         $actualTaskSeconds = $taskStartAt ? $taskStartAt->diffInSeconds($endAt) : 0;
         $notes['task_duration_seconds'] = $actualTaskSeconds;
         $notes['actual_task_seconds'] = $actualTaskSeconds;
+        $notes['task_started_at'] = null;
+        $notes['completed_cycles'] = $nextCompletedCycles;
+        $notes['required_cycles'] = $requiredCycles;
 
-        $orderQuantity = max(1, (int) ($task->order_quantity ?? 1));
         $normSecondsPerUnit = max(0, (int) round((float) ($task->step?->production_time_seconds ?? 0)));
-        $requiredTaskNormSeconds = $normSecondsPerUnit * $orderQuantity;
+        $requiredTaskNormSeconds = $normSecondsPerUnit;
 
         $notes['norm_seconds_per_unit'] = $normSecondsPerUnit;
         $notes['norm_required_seconds'] = $requiredTaskNormSeconds;
@@ -932,20 +983,37 @@ class EmployeeController extends Controller
 
         $notes = $this->appendActivityLog(
             $notes,
-            'Zakończono produkcję zadania. Czas rzeczywisty: ' . $actualTaskSeconds . 's, norma: ' . $requiredTaskNormSeconds . 's, wykonanie normy: ' . $normPercentText
+            'Zakończono produkcję zadania (podejście ' . $nextCompletedCycles . '/' . $requiredCycles . '). Czas rzeczywisty: ' . $actualTaskSeconds . 's, norma: ' . $requiredTaskNormSeconds . 's, wykonanie normy: ' . $normPercentText
         );
 
         $task->notes = json_encode($notes, JSON_UNESCAPED_UNICODE);
         $task->save();
-        $this->storeProductionEvent(
+        $productionEvent = $this->storeProductionEvent(
             $task,
-            'Zakończono produkcję zadania. Czas rzeczywisty: ' . $actualTaskSeconds . 's, norma: ' . $requiredTaskNormSeconds . 's, wykonanie normy: ' . $normPercentText,
+            'Zakończono produkcję zadania (podejście ' . $nextCompletedCycles . '/' . $requiredCycles . '). Czas rzeczywisty: ' . $actualTaskSeconds . 's, norma: ' . $requiredTaskNormSeconds . 's, wykonanie normy: ' . $normPercentText,
             'success',
             [
                 'norm_required_seconds' => $requiredTaskNormSeconds,
                 'actual_task_seconds' => $actualTaskSeconds,
                 'norm_usage_percent' => $notes['norm_usage_percent'] ?? null,
                 'norm_performance_percent' => $notes['norm_performance_percent'] ?? null,
+                'completed_cycles' => $nextCompletedCycles,
+                'required_cycles' => $requiredCycles,
+                'occurred_at' => $endAt->toDateTimeString(),
+            ]
+        );
+
+        $this->performanceTrackingService->storeFromPlan(
+            $task,
+            $productionEvent,
+            [
+                'norm_required_seconds' => $requiredTaskNormSeconds,
+                'actual_task_seconds' => $actualTaskSeconds,
+                'norm_usage_percent' => $notes['norm_usage_percent'] ?? null,
+                'norm_performance_percent' => $notes['norm_performance_percent'] ?? null,
+                'completed_cycles' => $nextCompletedCycles,
+                'required_cycles' => $requiredCycles,
+                'occurred_at' => $endAt->toDateTimeString(),
             ]
         );
 
@@ -959,7 +1027,9 @@ class EmployeeController extends Controller
             }
         }
 
-        return back()->with('success', 'Zadanie zostało zakończone i zapisane.');
+        return back()->with('success', $isFinalCycle
+            ? 'Zadanie zostało zakończone i wykonane w pełnym zakresie (' . $requiredCycles . '/' . $requiredCycles . ').'
+            : 'Zadanie zapisane jako wykonane ' . $nextCompletedCycles . '/' . $requiredCycles . '. Możesz rozpocząć kolejne podejście.');
     }
 
     private function decodeNotes(?string $notes): array
@@ -989,8 +1059,8 @@ class EmployeeController extends Controller
         string $message,
         string $eventType = 'info',
         array $metrics = []
-    ): void {
-        OrderItemProductionEvent::query()->create([
+    ): OrderItemProductionEvent {
+        return OrderItemProductionEvent::query()->create([
             'order_item_production_plan_id' => $plan->id,
             'user_id' => Auth::id(),
             'event_type' => in_array($eventType, ['info', 'success', 'warning'], true) ? $eventType : 'info',

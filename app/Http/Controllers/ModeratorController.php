@@ -55,6 +55,62 @@ class ModeratorController extends Controller
     }
 
     /**
+     * Aktualizacja statusu urlopu z widoku kalendarza moderatora.
+     */
+    public function updateLeaveStatus(int $id, Request $request)
+    {
+        $data = $request->validate([
+            'status' => 'required|string|in:approved,rejected',
+            'rejection_reason' => 'nullable|string|max:1000',
+        ]);
+
+        $leave = $this->leavesInterface->getLeavesById($id);
+        if (! $leave) {
+            return redirect()->back()->with('error', 'Nie znaleziono urlopu.');
+        }
+
+        $days = (int) ($leave->days ?? Carbon::parse($leave->start_date)->diffInDays(Carbon::parse($leave->end_date)) + 1);
+        $year = Carbon::parse($leave->start_date)->year;
+
+        try {
+            if ($data['status'] === 'approved') {
+                $this->leavesInterface->setLeaveBalance(
+                    $leave->id,
+                    $days,
+                    (int) $leave->user_id,
+                    ''
+                );
+
+                return redirect()->back()->with('success', 'Status urlopu zmieniony na: zatwierdzony.');
+            }
+
+            $reason = trim((string) ($data['rejection_reason'] ?? 'Odrzucono przez moderatora'));
+
+            $this->leavesInterface->rejectLeave(
+                $leave->id,
+                (int) auth()->id(),
+                $reason,
+                [
+                    'days' => $days,
+                    'type' => $leave->type,
+                    'user_id' => (int) $leave->user_id,
+                    'year' => $year,
+                ]
+            );
+
+            return redirect()->back()->with('success', 'Status urlopu zmieniony na: odrzucony.');
+        } catch (\Throwable $e) {
+            \Log::error('Error updating leave status from calendar', [
+                'leave_id' => $id,
+                'status' => $data['status'],
+                'message' => $e->getMessage(),
+            ]);
+
+            return redirect()->back()->with('error', $e->getMessage() ?: 'Nie udało się zaktualizować statusu urlopu.');
+        }
+    }
+
+    /**
      * Zatwierdź urlop
      */
     public function approveLeave(Request $request)

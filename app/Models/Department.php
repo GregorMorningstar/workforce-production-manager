@@ -98,4 +98,9 @@ class Department extends Model
         );
     }
 
+    public function productionPerformances(): HasMany
+    {
+        return $this->hasMany(ProductionPerformance::class, 'department_id');
+    }
+
 }

@@ -23,6 +23,7 @@ use App\Http\Controllers\ProductionPlanController;
 use App\Http\Controllers\ItemsFinishedGoodController;
 use App\Http\Controllers\ProductionSchemaController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\PerformanceController;
 
 // Broadcasting authentication routes
 Broadcast::routes(['middleware' => ['web', 'auth']]);
@@ -103,6 +104,8 @@ Route::middleware(['web', 'auth', 'verified', 'role:moderator'])
         Route::prefix('leaves')->name('leaves.')->group(function () {
             Route::get('/', [ModeratorController::class, 'getLeavesCalendar'])->name('calendar');
             // URL: /moderator/leaves
+            Route::put('/{id}/status', [ModeratorController::class, 'updateLeaveStatus'])->name('status.update');
+            // URL: /moderator/leaves/{id}/status (PUT)
             Route::get('/pending', [ModeratorController::class, 'getPendingLeaves'])->name('pending');
             // URL: /moderator/leaves/pending
             Route::get('/pending/{userId}', [ModeratorController::class, 'getUserPendingLeaves'])->name('pending.user');
@@ -235,6 +238,14 @@ Route::middleware(['web', 'auth', 'verified', 'role:moderator'])
             Route::get('/sold-items', [OrderController::class, 'soldItems'])->name('sold_items');
             // URL: /moderator/orders/sold-items
         });
+
+        // Performance
+        Route::prefix('performance')->name('performance.')->group(function () {
+            Route::get('/', [PerformanceController::class, 'moderatorIndex'])->name('index');
+            // URL: /moderator/performance
+            Route::get('/departments', [PerformanceController::class, 'moderatorDepartments'])->name('departments');
+            // URL: /moderator/performance/departments
+        });
     });
 
 /* =================== EMPLOYEE ROUTES =================== */
@@ -285,6 +296,14 @@ Route::middleware(['web', 'auth', 'verified', 'role:employee'])
             // URL: /employee/production/{planId}/task/start
             Route::post('/{planId}/task/finish', [EmployeeController::class, 'finishTaskByMachineScan'])->name('task_finish');
             // URL: /employee/production/{planId}/task/finish
+        });
+
+        // Employee performance
+        Route::prefix('performance')->name('performance.')->group(function () {
+            Route::get('/', [PerformanceController::class, 'employeeIndex'])->name('index');
+            // URL: /employee/performance
+            Route::get('/department', [PerformanceController::class, 'employeeDepartment'])->name('department');
+            // URL: /employee/performance/department
         });
 
         // Employee profile

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { usePage, Link } from '@inertiajs/react';
 import { NavMain } from '@/components/nav-main';
-import { LayoutGrid, ChevronDown } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import type { NavItem as NavItemType } from '@/types';
 import Barcode from 'react-barcode';
 
@@ -18,8 +18,8 @@ import {
   faUser,
   faNetworkWired,
   faIndustry,
+  faChartLine,
 } from '@fortawesome/free-solid-svg-icons';
-import { machine } from 'os';
 
 export default function EmployeeSidebarMenu(): React.ReactElement {
   const page = usePage();
@@ -42,8 +42,8 @@ export default function EmployeeSidebarMenu(): React.ReactElement {
     },
   ];
 
-  const [openKey, setOpenKey] = useState<'education' | 'company' | 'calendar' | 'machines' | 'profile' | 'production' | null>(null);
-  const toggle = (key: 'education' | 'company' | 'calendar' | 'machines' | 'profile' | 'production') =>
+  const [openKey, setOpenKey] = useState<'education' | 'company' | 'calendar' | 'machines' | 'profile' | 'production' | 'performance' | null>(null);
+  const toggle = (key: 'education' | 'company' | 'calendar' | 'machines' | 'profile' | 'production' | 'performance') =>
     setOpenKey(prev => (prev === key ? null : key));
 
   const currentUrl =
@@ -98,6 +98,8 @@ export default function EmployeeSidebarMenu(): React.ReactElement {
     machinesUser: '/machines/user',
     productionMy: '/employee/production/my',
     productionHistory: '/employee/production/history',
+    performance: '/employee/performance',
+    performanceDepartment: '/employee/performance/department',
   };
 
   return (
@@ -371,6 +373,45 @@ export default function EmployeeSidebarMenu(): React.ReactElement {
                 className={`text-sm px-2 py-1 rounded block ${isActive(routes.productionHistory) ? 'bg-gray-200 font-semibold' : 'hover:bg-gray-100'}`}
               >
                 <FontAwesomeIcon icon={faList} className="mr-2" /> Historia
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Performance */}
+        <div className="w-full mt-3">
+          <button
+            type="button"
+            onClick={() => toggle('performance')}
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-md transition
+              ${openKey === 'performance' ? 'bg-gray-100 dark:bg-gray-800' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+            aria-expanded={openKey === 'performance'}
+          >
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <FontAwesomeIcon icon={faChartLine} className="h-4 w-4" />
+              <span>Wydajnosc</span>
+            </div>
+            <ChevronDown
+              className={`h-4 w-4 transition-transform duration-200 ${openKey === 'performance' ? 'rotate-180' : 'rotate-0'}`}
+            />
+          </button>
+
+          <div
+            className={`overflow-hidden transition-all duration-300 ${openKey === 'performance' ? 'max-h-64 opacity-100 mt-2' : 'max-h-0 opacity-0'}`}
+            aria-hidden={openKey !== 'performance'}
+          >
+            <div className="flex flex-col space-y-1 pl-6">
+              <Link
+                href={routes.performance}
+                className={`text-sm px-2 py-1 rounded block ${isActive(routes.performance) ? 'bg-gray-200 font-semibold' : 'hover:bg-gray-100'}`}
+              >
+                <FontAwesomeIcon icon={faChartLine} className="mr-2" /> Moja wydajnosc i maszyny
+              </Link>
+              <Link
+                href={routes.performanceDepartment}
+                className={`text-sm px-2 py-1 rounded block ${isActive(routes.performanceDepartment) ? 'bg-gray-200 font-semibold' : 'hover:bg-gray-100'}`}
+              >
+                <FontAwesomeIcon icon={faIndustry} className="mr-2" /> Szczegoly mojego wydzialu
               </Link>
             </div>
           </div>

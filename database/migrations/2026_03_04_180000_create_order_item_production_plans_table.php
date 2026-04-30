@@ -33,7 +33,7 @@ return new class extends Migration
             $table->string('unit', 32)->nullable();
 
             $table->enum('status', array_map(fn ($case) => $case->value, OrderItemProductionPlanStatus::cases()))
-                ->default(OrderItemProductionPlanStatus::ROZPOCZETO_PROCES->value)
+                ->default(OrderItemProductionPlanStatus::DODANO_PRACOWNIKA->value)
                 ->index();
             $table->text('notes')->nullable();
             $table->timestamps();

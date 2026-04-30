@@ -144,7 +144,11 @@ export default function ModeratorSidebarMenu(): React.ReactElement {
           name="performance"
           toggle={toggle}
           isActive={isActive}
-          links={[{ href: '/moderator/performance', label: 'Przegląd wydajności' }, { href: '/moderator/performance/reports', label: 'Raporty' }]}
+          links={[
+            { href: '/moderator/performance', label: 'Przeglad wydajnosci' },
+            { href: '/moderator/performance?focus=machines', label: 'Wydajnosc maszyn' },
+            { href: '/moderator/performance/departments', label: 'Szczegoly wydzialow' },
+          ]}
         />
 
         {/* Production */}

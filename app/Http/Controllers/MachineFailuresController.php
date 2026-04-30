@@ -47,6 +47,17 @@ class MachineFailuresController extends Controller
 
     public function create($machine_id)
     {
+        $user = auth()->user();
+        $role = strtolower((string) ($user?->role?->value ?? $user?->role ?? ''));
+
+        if ($role === 'employee') {
+            $allowed = $this->machineService->canUserReportFailureForMachine((int) $user->id, (int) $machine_id);
+            if (!$allowed) {
+                return redirect()->route('machines.report-failure')
+                    ->with('error', 'Ta maszyna nie jest przypisana do Ciebie w produkcji i nie masz do niej uprawnienia zgłoszeń.');
+            }
+        }
+
         return Inertia::render('machines/failures/create', ['machine_id' => $machine_id]);
      }
 
@@ -61,7 +72,19 @@ class MachineFailuresController extends Controller
             'failure_rank' => 'required|integer|min:1|max:10',
             'failure_description' => 'required|string|max:2000',
         ]);
-        $data['user_id'] = $request->user()->id;
+
+        $user = $request->user();
+        $role = strtolower((string) ($user?->role?->value ?? $user?->role ?? ''));
+
+        if ($role === 'employee') {
+            $allowed = $this->machineService->canUserReportFailureForMachine((int) $user->id, (int) $data['machine_id']);
+            if (!$allowed) {
+                return redirect()->route('machines.report-failure')
+                    ->with('error', 'Nie mozesz zgłosic awarii dla tej maszyny. Brak przypisania produkcyjnego lub historii zgloszen.');
+            }
+        }
+
+        $data['user_id'] = $user->id;
         $this->machineFailureService->createMachineFailure($data, (int) $data['machine_id']);
         return redirect()->route('machines.failures.history.index')->with('success', 'Zgłoszono awarie.');
     }

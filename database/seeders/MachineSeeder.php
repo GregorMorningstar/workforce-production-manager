@@ -6,6 +6,7 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\File;
 use App\Models\Department;
 use App\Models\Machines;
 use App\Enums\MachineStatus;
@@ -20,40 +21,9 @@ class MachineSeeder extends Seeder
         Machines::query()->delete();
 
         // Utwórz folder na obrazy jeśli nie istnieje
-        $publicMachinesPath = public_path('storage/images/machines');
         $storageMachinesPath = storage_path('app/public/images/machines');
 
-        if (!is_dir($storageMachinesPath)) {
-            mkdir($storageMachinesPath, 0755, true);
-        }
-
-        // Replace the symlink creation logic with a fallback to copy files if symlink fails
-        if (!is_dir($publicMachinesPath) && !is_link($publicMachinesPath)) {
-            $publicImagesPath = public_path('storage/images');
-            if (!is_dir($publicImagesPath)) {
-                mkdir($publicImagesPath, 0755, true);
-            }
-            try {
-                symlink($storageMachinesPath, $publicMachinesPath);
-            } catch (\Exception $e) {
-                // Fallback: Copy files instead of creating a symlink
-                if (!is_dir($publicMachinesPath)) {
-                    mkdir($publicMachinesPath, 0755, true);
-                }
-                $files = glob($storageMachinesPath . '/*');
-                foreach ($files as $file) {
-                    // Add a check to ensure the file exists before attempting to copy
-                    if (file_exists($file)) {
-                        $destination = $publicMachinesPath . '/' . basename($file);
-                        if (!file_exists($destination)) {
-                            copy($file, $destination);
-                        }
-                    } else {
-                        echo "File not found: $file\n";
-                    }
-                }
-            }
-        }
+        File::ensureDirectoryExists($storageMachinesPath);
 
         $machines = [
             // Odlewnia
@@ -311,9 +281,7 @@ class MachineSeeder extends Seeder
                         $origBasename = pathinfo($f, PATHINFO_BASENAME);
                         $imageName = $origBasename;
                         $fullImagePath = $storageMachinesPath . '/' . $imageName;
-                        if (!file_exists(dirname($fullImagePath))) {
-                            mkdir(dirname($fullImagePath), 0755, true);
-                        }
+                        File::ensureDirectoryExists(dirname($fullImagePath));
                         copy($f, $fullImagePath);
                         if (file_exists($fullImagePath) && filesize($fullImagePath) > 0) {
                             // zapisuj w DB ścieżkę bez pierwszego 'storage/' - front i blade powinien dodawać '/storage/' prefix
@@ -346,9 +314,7 @@ class MachineSeeder extends Seeder
                         $imageName = $slug . '.' . $ext;
                         $fullImagePath = $storageMachinesPath . '/' . $imageName;
 
-                        if (!file_exists(dirname($fullImagePath))) {
-                            mkdir(dirname($fullImagePath), 0755, true);
-                        }
+                        File::ensureDirectoryExists(dirname($fullImagePath));
                         $saved = file_put_contents($fullImagePath, $response->body());
                         if ($saved !== false && file_exists($fullImagePath) && filesize($fullImagePath) > 0) {
                             $imagePath = 'images/machines/' . $imageName;

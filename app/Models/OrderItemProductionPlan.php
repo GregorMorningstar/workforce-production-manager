@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Enums\OrderItemProductionPlanStatus;
 
 class OrderItemProductionPlan extends Model
 {
@@ -37,6 +38,7 @@ class OrderItemProductionPlan extends Model
         'planned_end_at' => 'datetime',
         'required_quantity_per_unit' => 'float',
         'required_total_quantity' => 'float',
+        'status' => OrderItemProductionPlanStatus::class,
     ];
 
     protected static function booted()
@@ -100,5 +102,10 @@ class OrderItemProductionPlan extends Model
     public function events()
     {
         return $this->hasMany(OrderItemProductionEvent::class, 'order_item_production_plan_id');
+    }
+
+    public function performances()
+    {
+        return $this->hasMany(ProductionPerformance::class, 'order_item_production_plan_id');
     }
 }

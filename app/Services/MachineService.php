@@ -103,4 +103,9 @@ class MachineService implements MachinesServiceInterface
     {
         return $this->machinesRepository->getUserMachines($userId, $perPage);
     }
+
+    public function canUserReportFailureForMachine(int $userId, int $machineId): bool
+    {
+        return $this->machinesRepository->canUserReportFailureForMachine($userId, $machineId);
+    }
 }
