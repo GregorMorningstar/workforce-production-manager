@@ -1,0 +1,52 @@
+Film 1: Moderator (scenariusz krok po kroku)
+
+Logowanie na konto moderatora i wejście na dashboard.
+Użytkownicy:
+Lista użytkowników.
+Akceptacja/odrzucenie wykształcenia.
+Akceptacja/odrzucenie świadectwa pracy.
+Urlopy:
+Kalendarz urlopów.
+Lista oczekujących wniosków.
+Akceptacja jednego wniosku + odrzucenie drugiego.
+Działy:
+Lista działów.
+Podgląd hali / układ hali.
+Maszyny:
+Lista maszyn.
+Dodanie/edycja maszyny.
+Operacje maszynowe (podgląd lub szybkie dodanie).
+Produkcja:
+Materiały produkcyjne (stan + historia).
+Towary/pozycje.
+Zlecenia (utworzenie, podgląd, ewentualne odrzucenie).
+Planowanie produkcji i przypisanie operatora.
+Wydajność:
+Widok ogólny.
+Wydajność działów.
+Podsumowanie: „co moderator kontroluje i zatwierdza”.
+Film 2: Employee (scenariusz krok po kroku)
+
+Logowanie na konto employee i wejście na dashboard.
+Kalendarz/urlopy:
+Dodanie nowego wniosku urlopowego.
+Podgląd szczegółów i historii.
+Produkcja:
+„Moja produkcja”.
+Start pracy na planie.
+Workbench.
+Start/koniec przezbrojenia.
+Start/finish zadania (skan/barcode).
+Historia produkcji.
+Wydajność:
+Mój widok.
+Widok działu.
+Profil pracownika:
+Profil.
+Adres (dodanie/edycja).
+Firma (dodanie/edycja).
+Edukacja (dodanie/edycja).
+Moduły wspólne:
+Chat.
+Zgłoszenie awarii maszyny (i podgląd historii).
+Podsumowanie: „co employee wykonuje operacyjnie na co dzień”.

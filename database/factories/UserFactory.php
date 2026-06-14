@@ -21,7 +21,7 @@ class UserFactory extends Factory
             'name' => $this->faker->name(),
             'email' => $this->faker->unique()->safeEmail(),
             'email_verified_at' => now(),
-            'password' => Hash::make('qwer1234'),
+            'password' => Hash::make('password'),
             'remember_token' => Str::random(10),
             'role' => $this->faker->randomElement(['employee','moderator','admin']),
             'department_id' => Department::inRandomOrder()->value('id') ?? null,
@@ -42,5 +42,19 @@ class UserFactory extends Factory
     public function admin()
     {
         return $this->state(fn() => ['role' => 'admin']);
+    }
+
+    public function unverified()
+    {
+        return $this->state(fn() => ['email_verified_at' => null]);
+    }
+
+    public function withoutTwoFactor()
+    {
+        return $this->state(fn() => [
+            'two_factor_secret'         => null,
+            'two_factor_recovery_codes' => null,
+            'two_factor_confirmed_at'   => null,
+        ]);
     }
 }

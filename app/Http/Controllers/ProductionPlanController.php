@@ -180,7 +180,6 @@ class ProductionPlanController extends Controller
           if (!$order) {
                abort(404, 'Zamówienie nie znalezione');
           }
-
           $validated = $request->validate([
                'assignments' => ['required', 'array'],
                'assignments.*.order_item_id' => ['required', 'integer', 'exists:order_items,id'],
@@ -188,11 +187,9 @@ class ProductionPlanController extends Controller
                'assignments.*.machine_id' => ['nullable', 'integer', 'exists:machines,id'],
                'assignments.*.user_id' => ['nullable', 'integer', 'exists:users,id'],
           ]);
-
           $plannedStart = $order->planned_production_at
                ? Carbon::parse($order->planned_production_at)
                : now();
-
           DB::transaction(function () use ($validated, $order, $plannedStart) {
                $allSteps = [];
                $assignedSteps = [];
@@ -201,36 +198,29 @@ class ProductionPlanController extends Controller
                     $stepId = (int) $assignment['step_id'];
                     $machineId = $assignment['machine_id'] ?? null;
                     $userId = $assignment['user_id'] ?? null;
-
                     $orderItem = OrderItem::query()
                          ->where('id', $orderItemId)
                          ->where('order_id', $order->id)
                          ->first();
                     if (!$orderItem) {
-                         continue;
-                    }
+                         continue;          }
                     $step = ProductionSchemaStep::query()->find($stepId);
                     if (!$step) {
-                         continue;
-                    }
+                         continue;                    }
                     $allSteps[] = $orderItem->id . '-' . $step->id;
-
                     $assignedUserId = null;
                     if ($userId) {
                          $employee = User::query()
                               ->where('id', $userId)
                               ->where('role', UserRole::EMPLOYEE->value)
                               ->first();
-
                          if ($employee) {
                               $assignedUserId = $employee->id;
                          }
                     }
-
                     $requiredPerUnit = (float) ($step->required_quantity ?? 0);
                     $requiredTotal = $requiredPerUnit * (int) $orderItem->quantity;
                     $plannedEnd = null;
-
                     if (!$assignedUserId) {
                          OrderItemProductionPlan::query()
                               ->where('order_item_id', $orderItem->id)
@@ -240,7 +230,6 @@ class ProductionPlanController extends Controller
                     } else {
                          $assignedSteps[] = $orderItem->id . '-' . $step->id;
                     }
-
                     $effectiveMachineId = $machineId ?? $step->machine_id;
                     $machine = null;
                     $changeoverSeconds = 0;

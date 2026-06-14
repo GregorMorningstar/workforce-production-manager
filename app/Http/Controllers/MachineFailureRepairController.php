@@ -57,6 +57,11 @@ public function __construct(private readonly MachineFailureRepairServiceInterfac
                 }
             }
         }
+
+        if (!$repairOrderNo && $machineFailure?->machine?->barcode) {
+            $repairOrderNo = 'RO-' . $machineFailure->machine->barcode . '/' . now()->format('d-m-Y');
+        }
+
         $statuses = MachineFailureRepairsStatus::toSelectArray();
 
         return Inertia::render('machines/failures/repairs/create', [
@@ -137,11 +142,18 @@ public function __construct(private readonly MachineFailureRepairServiceInterfac
 
     public function createRaportedFailureNextStep(Request $request, $id)
     {
-        $machineFailureRepair = $this->machineFailureRepairService->getFailureMachineWithMachine($id);
+        $repair = MachineFailureRepair::with(['machineFailure.machine', 'machineFailure.user'])->find((int) $id);
+        if (!$repair || !$repair->machineFailure) {
+            return redirect()->route('machines.report-failure')->with('error', 'Nie znaleziono naprawy do kolejnego etapu.');
+        }
+
+        $machineFailure = $repair->machineFailure;
+        $repairOrderNo = 'RO-' . ($machineFailure->machine->barcode ?? 'unknown') . '/' . now()->format('d-m-Y');
         $statuses = MachineFailureRepairsStatus::toSelectArray();
 
-        return Inertia::render('machines/failures/repairs/create_nextstep', [
-            'machineFailureRepair' => $machineFailureRepair,
+        return Inertia::render('machines/failures/repairs/create', [
+            'machineFailure' => $machineFailure,
+            'repairOrderNo' => $repairOrderNo,
             'statuses' => $statuses,
         ]);
     }

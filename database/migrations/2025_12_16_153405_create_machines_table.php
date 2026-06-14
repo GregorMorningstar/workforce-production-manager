@@ -25,12 +25,10 @@ return new class extends Migration
 
             // owner (single user owner) - optional
             $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
-
             // department - one department per machine
             $table->foreignId('department_id')->nullable()->constrained('departments')->nullOnDelete();
             $table->enum('status', array_map(function($c){ return $c->value; }, MachineStatus::cases()))
                   ->default(MachineStatus::INACTIVE->value);
-
             $table->timestamps();
         });
     }

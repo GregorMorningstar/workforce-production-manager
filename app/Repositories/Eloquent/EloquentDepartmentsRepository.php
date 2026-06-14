@@ -4,7 +4,6 @@ namespace App\Repositories\Eloquent;
 
 use App\Repositories\Contracts\DepartmentsRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\DB;
 use App\Models\Department;
 
 class EloquentDepartmentsRepository implements DepartmentsRepositoryInterface
@@ -22,10 +21,7 @@ class EloquentDepartmentsRepository implements DepartmentsRepositoryInterface
             ->with('users')
             ->withCount([
                 'machines as count_of_machine',
-                'machines as count_of_employee' => function ($query) {
-                    $query->select(DB::raw('COUNT(DISTINCT user_id)'))
-                        ->whereNotNull('user_id');
-                },
+                'users as count_of_employee',
                 'machineFailures as count_of_failure_machine' => function ($query) {
                     $query->whereNull('finished_repaired_at');
                 },
@@ -69,10 +65,7 @@ class EloquentDepartmentsRepository implements DepartmentsRepositoryInterface
             ->with(['users', 'machines.owner'])
             ->withCount([
                 'machines as count_of_machine',
-                'machines as count_of_employee' => function ($query) {
-                    $query->select(DB::raw('COUNT(DISTINCT user_id)'))
-                        ->whereNotNull('user_id');
-                },
+                'users as count_of_employee',
                 'machineFailures as count_of_failure_machine' => function ($query) {
                     $query->whereNull('finished_repaired_at');
                 },

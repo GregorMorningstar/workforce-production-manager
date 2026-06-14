@@ -10,7 +10,6 @@ type OrderForPlanning = {
     finished_at?: string | null;
     items_count?: number;
 };
-
 type PlaningCanbanCardProps = {
     title?: string;
     orders?: {
@@ -22,27 +21,21 @@ type PlaningCanbanCardProps = {
         links?: Array<{ url: string | null; label: string; active: boolean }>;
     };
 };
-
 const STATUS_LABELS: Record<string, string> = {
     accepted: 'Accepted',
     in_progress: 'In Progress',
 };
-
 const fmt = (val?: string | null) => (val ? val : '-');
-
 export default function PlaningCanbanCard({ orders, title = 'Tworzenie zlecenia produkcji' }: PlaningCanbanCardProps) {
     const list = orders?.data ?? [];
-
     const handleDelete = (id: number) => {
         if (!window.confirm('Czy na pewno chcesz usunąć zamówienie?')) return;
         router.delete(`/moderator/orders/${id}`);
     };
-
     const handleReject = (id: number) => {
         if (!window.confirm('Czy na pewno chcesz odrzucić zamówienie?')) return;
         router.post(`/moderator/orders/${id}/reject`);
     };
-
     return (
         <div className="bg-white rounded shadow p-4">
             <h3 className="text-lg font-semibold mb-2">{title}</h3>

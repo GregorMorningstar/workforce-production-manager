@@ -17,6 +17,7 @@ import AppLogo from './app-logo';
 import ModeratorSidebarMenu from './menu/moderator-sidebar-menu';
 import EmployeeSidebarMenu from './menu/employee-sidebar-menu';
 import AdminSidebarMenu from './menu/admin-sidebar-menu';
+import ThemeSwitch from './theme-switch';
 
 const footerNavItems: NavItem[] = [
     {
@@ -62,6 +63,14 @@ export function AppSidebar() {
             <SidebarContent>{renderMenu()}</SidebarContent>
 
             <SidebarFooter>
+                <SidebarMenu>
+                    <SidebarMenuItem>
+                        <ThemeSwitch
+                            label="Jasny / Ciemny"
+                            hideLabelOnCollapsedSidebar
+                        />
+                    </SidebarMenuItem>
+                </SidebarMenu>
                 <NavFooter items={footerNavItems} className="mt-auto" />
                 <NavUser />
             </SidebarFooter>

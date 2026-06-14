@@ -19,7 +19,6 @@ import {
   faEnvelopeCircleCheck,
   faWarehouse,
 } from '@fortawesome/free-solid-svg-icons';
-
 // Lucide
 import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
 import { LayoutGrid, Folder, BookOpen } from 'lucide-react';
@@ -79,7 +78,6 @@ export default function ModeratorSidebarMenu(): React.ReactElement {
             { href: '/moderator/users/confirmation-education', label: 'Potwierdz edukacje' },
           ]}
         />
-
         {/* Leaves */}
         <SectionButton
           title="Urlopy"
@@ -90,7 +88,6 @@ export default function ModeratorSidebarMenu(): React.ReactElement {
           isActive={isActive}
           links={[{ href: '/moderator/leaves', label: 'Kalendarz urlopów' }, { href: '/moderator/leaves/pending', label: 'Oczekujące wnioski' }]}
         />
-
         {/* Departments */}
         <SectionButton
           title="Wydziały"
@@ -100,12 +97,11 @@ export default function ModeratorSidebarMenu(): React.ReactElement {
           toggle={toggle}
           isActive={isActive}
           links={[
-            { href: '/moderator/departments', label: 'Lista Wydziały' },
+            { href: '/moderator/departments', label: 'Lista wydziałów' },
             { href: '/moderator/departments/active-employees', label: 'Lista pracowników na wydziałach' },
-            { href: '/moderator/departments/create', label: 'Dodaj wydział' },
+            { href: '/moderator/departments/add-new', label: 'Dodaj wydział' },
           ]}
         />
-
         {/* Machines */}
         <SectionButton
           title="Maszyny"
@@ -120,7 +116,6 @@ export default function ModeratorSidebarMenu(): React.ReactElement {
             { href: '/moderator/machines/operations', label: 'Operacje' },
           ]}
         />
-
         {/* Incidents */}
         <SectionButton
           title="Awarie"
@@ -135,7 +130,6 @@ export default function ModeratorSidebarMenu(): React.ReactElement {
               { href: '/machines/failures/reports', label: 'Raporty' },
             ]}
         />
-
         {/* Performance */}
         <SectionButton
           title="Wydajność"
@@ -150,7 +144,6 @@ export default function ModeratorSidebarMenu(): React.ReactElement {
             { href: '/moderator/performance/departments', label: 'Szczegoly wydzialow' },
           ]}
         />
-
         {/* Production */}
         <SectionButton
           title="Planowanie produkcji"

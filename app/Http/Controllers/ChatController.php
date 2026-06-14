@@ -2,55 +2,64 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Chat;
-use App\Models\User;
-use Inertia\Inertia;
 use App\Events\MessageSent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
+use App\Services\Contracts\ChatServiceInterface;
 
 class ChatController extends Controller
 {
+    public function __construct(private readonly ChatServiceInterface $chatService)
+    {
+    }
+
     public function index(Request $request)
     {
-       $user_id = Auth::id();
-       $other_user_id = $request->integer('other_user_id');
-       $users = User::select('id','name','email')->with('profile')->orderBy('name')->get();
+        $userId = (int) Auth::id();
+        $search = trim((string) $request->query('search', ''));
+        $usersPerPage = max(5, min(50, $request->integer('users_per_page', 12)));
+        $messagesPerPage = max(10, min(100, $request->integer('messages_per_page', 30)));
 
-       $chats = [];
-       if ($other_user_id) {
-           $chats = Chat::where(function ($query) use ($user_id, $other_user_id) {
-                $query->where('sender_id', $user_id)
-                      ->where('receiver_id', $other_user_id);
-            })->orWhere(function ($query) use ($user_id, $other_user_id) {
-                $query->where('sender_id', $other_user_id)
-                      ->where('receiver_id', $user_id);
-            })
-            ->orderBy('created_at')
-            ->get();
-       }
+        $users = $this->chatService->paginateUsers($userId, $usersPerPage, [
+            'search' => $search,
+        ]);
 
-       \Log::info('Chat index', [
-           'user_id' => $user_id,
-           'other_user_id' => $other_user_id,
-           'chats_count' => count($chats)
-       ]);
+        $otherUserId = $request->integer('other_user_id');
+        if ($otherUserId !== null && $otherUserId > 0) {
+            if ($otherUserId === $userId || !$this->chatService->userExists($otherUserId)) {
+                $otherUserId = null;
+            }
+        } else {
+            $otherUserId = null;
+        }
 
-       // Return JSON if request wants JSON (AJAX requests)
-       if ($request->wantsJson() || $request->ajax()) {
-           return response()->json([
-               'chats' => $chats,
-               'other_user_id' => $other_user_id,
-               'user_id' => $user_id,
-           ]);
-       }
+        $chats = null;
+        if ($otherUserId !== null) {
+            $chats = $this->chatService->paginateConversation($userId, $otherUserId, $messagesPerPage);
+        }
 
-       return Inertia::render('chat/index', [
-           'chats' => $chats,
-           'other_user_id' => $other_user_id,
-           'user_id' => $user_id,
-           'users' => $users
-       ]);
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'chats' => $chats,
+                'other_user_id' => $otherUserId,
+                'user_id' => $userId,
+                'users' => $users,
+                'filters' => [
+                    'search' => $search,
+                ],
+            ]);
+        }
+
+        return Inertia::render('chat/index', [
+            'chats' => $chats,
+            'other_user_id' => $otherUserId,
+            'user_id' => $userId,
+            'users' => $users,
+            'filters' => [
+                'search' => $search,
+            ],
+        ]);
     }
 
     public function store(Request $request)
@@ -66,11 +75,15 @@ class ChatController extends Controller
                 'message' => 'required|string|max:1000',
             ]);
 
-            $chat = Chat::create([
-                'sender_id' => Auth::id(),
-                'receiver_id' => $validated['other_user_id'],
-                'message' => $validated['message'],
-            ]);
+            if ((int) $validated['other_user_id'] === (int) Auth::id()) {
+                return response()->json(['error' => 'Nie można wysłać wiadomości do siebie.'], 422);
+            }
+
+            $chat = $this->chatService->createMessage(
+                (int) Auth::id(),
+                (int) $validated['other_user_id'],
+                (string) $validated['message'],
+            );
 
             \Log::info('Chat store - SUCCESS', ['chat_id' => $chat->id]);
 

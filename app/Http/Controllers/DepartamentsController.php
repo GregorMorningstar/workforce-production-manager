@@ -26,6 +26,17 @@ class DepartamentsController extends Controller
         ]);
     }
 
+    public function activeEmployees(Request $request)
+    {
+        $departments = $this->departmentsService->getAllDepartmentsWithUsersPaginated(12);
+
+        return Inertia::render('moderator/departments/active-employees', [
+            'departments' => $departments,
+            'success' => $request->session()->get('success'),
+            'error' => $request->session()->get('error'),
+        ]);
+    }
+
     public function create(Request $request)
     {
         return Inertia::render('moderator/departments/create');

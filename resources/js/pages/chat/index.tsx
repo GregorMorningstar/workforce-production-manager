@@ -1,15 +1,31 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import echo from '@/lib/echo';
+import ThemeSwitch from '@/components/theme-switch';
+
+type Paginated<T> = {
+  data: T[];
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+};
 
 interface User {
   id: number;
   name: string;
   email: string;
+  avatar?: string;
+  profile?: {
+    profile_photo_url?: string;
+  };
 }
 
-interface OnlineUserMeta { id: number; name: string }
+interface OnlineUserMeta {
+  id: number;
+  name: string;
+}
 
 interface ChatMessage {
   id: number;
@@ -19,319 +35,461 @@ interface ChatMessage {
   created_at: string;
 }
 
-interface ChatPageProps  {
+interface ChatPageProps {
   user_id: number;
   other_user_id: number | null;
-  users: User[];
-  chats: ChatMessage[];
+  users: Paginated<User>;
+  chats: Paginated<ChatMessage> | null;
+  filters?: {
+    search?: string;
+  };
 }
 
-const ChatPage: React.FC<ChatPageProps> = ({ user_id, other_user_id, users, chats }) => {
-  const [messages, setMessages] = useState<ChatMessage[]>(chats || []);
+const ChatPage: React.FC<ChatPageProps> = ({ user_id, other_user_id, users, chats, filters }) => {
+  const [messages, setMessages] = useState<ChatMessage[]>(chats?.data ?? []);
   const [input, setInput] = useState('');
-  const [echoStatus, setEchoStatus] = useState<string>('init');
-  const castConnector = () => (echo as any).connector?.pusher;
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(filters?.search ?? '');
   const [onlineIds, setOnlineIds] = useState<number[]>([]);
   const [isTyping, setIsTyping] = useState(false);
+  const [echoStatus, setEchoStatus] = useState<string>('init');
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const activeUser = useMemo(
+    () => (other_user_id ? users.data.find((u) => u.id === other_user_id) ?? null : null),
+    [other_user_id, users.data],
+  );
+
+  const castConnector = () => (echo as any).connector?.pusher;
+
+  const goToChat = useCallback(
+    (payload: Record<string, unknown>) => {
+      router.get('/chat', payload, { preserveScroll: true, preserveState: true, replace: true });
+    },
+    [],
+  );
+
   useEffect(() => {
-  const conn = castConnector()?.connection;
-  setEchoStatus(conn?.state || 'connecting');
-    if (conn) {
-      const handler = (states: any) => setEchoStatus(states.current || conn.state);
-      conn.bind('state_change', handler);
-      return () => conn.unbind('state_change', handler);
+    setMessages(chats?.data ?? []);
+  }, [chats?.data]);
+
+  useEffect(() => {
+    const conn = castConnector()?.connection;
+    setEchoStatus(conn?.state || 'connecting');
+
+    if (!conn) {
+      return;
     }
+
+    const handler = (states: any) => setEchoStatus(states.current || conn.state);
+    conn.bind('state_change', handler);
+
+    return () => conn.unbind('state_change', handler);
   }, []);
 
   useEffect(() => {
-  let cancelled = false;
-  let channel: any = null;
-  let presenceChannel: any = null;
-  let channelName: string | null = null;
-  const boot = async () => {``
+    let cancelled = false;
+    let channel: any = null;
+    let presenceChannel: any = null;
+    let channelName: string | null = null;
+
+    const boot = async () => {
       let attempts = 0;
       while (!(window as any).Echo && attempts < 20) {
-        await new Promise(r => setTimeout(r, 100));
+        await new Promise((r) => setTimeout(r, 100));
         attempts++;
       }
-      if (cancelled) return;
-      if (!(window as any).Echo) {
-        console.error('[Echo] nadal brak instancji po oczekiwaniu');
+
+      if (cancelled || !(window as any).Echo) {
         return;
       }
-  channelName = `private-chat.${user_id}`;
-      setEchoStatus(castConnector()?.connection?.state || 'connecting');
 
-  channel = echo.private(`chat.${user_id}`)
+      channelName = `private-chat.${user_id}`;
+      channel = echo
+        .private(`chat.${user_id}`)
         .listen('MessageSent', (e: any) => {
-          setMessages(prev => {
-              if (prev.some(m => m.id === e.chatMessage.id)) return prev;
-              return [...prev, e.chatMessage];
+          const incoming: ChatMessage = e.chatMessage;
+          if (!other_user_id) {
+            return;
+          }
+
+          const belongsToCurrentChat =
+            (incoming.sender_id === user_id && incoming.receiver_id === other_user_id) ||
+            (incoming.sender_id === other_user_id && incoming.receiver_id === user_id);
+
+          if (!belongsToCurrentChat) {
+            return;
+          }
+
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === incoming.id)) {
+              return prev;
+            }
+            return [...prev, incoming];
           });
         })
         .listenForWhisper('typing', (e: any) => {
           if (e.user_id === other_user_id) {
             setIsTyping(true);
-            if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+            if (typingTimeoutRef.current) {
+              clearTimeout(typingTimeoutRef.current);
+            }
             typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 2000);
           }
         });
 
       try {
-        // Presence channel for online status: use logical name 'chat' (Echo will prefix 'presence-')
-        presenceChannel = (echo as any).join('chat')
-          .here((users: OnlineUserMeta[]) => {
-            setOnlineIds(users.map(u => u.id));
+        presenceChannel = (echo as any)
+          .join('chat')
+          .here((joinedUsers: OnlineUserMeta[]) => {
+            setOnlineIds(joinedUsers.map((u) => u.id));
           })
           .joining((user: OnlineUserMeta) => {
-            setOnlineIds(prev => prev.includes(user.id) ? prev : [...prev, user.id]);
+            setOnlineIds((prev) => (prev.includes(user.id) ? prev : [...prev, user.id]));
           })
           .leaving((user: OnlineUserMeta) => {
-            setOnlineIds(prev => prev.filter(id => id !== user.id));
+            setOnlineIds((prev) => prev.filter((id) => id !== user.id));
           });
-      } catch (e) { console.warn('Presence join error', e); }
+      } catch {
+        // Presence can fail silently when websocket is unavailable.
+      }
+    };
+
+    boot();
+
+    return () => {
+      cancelled = true;
+      if (channel) {
+        channel.stopListening('MessageSent');
+      }
+      if (channelName) {
+        echo.leaveChannel(channelName);
+      }
+      if (presenceChannel) {
+        (echo as any).leave('chat');
+      }
+    };
+  }, [other_user_id, user_id]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }, 40);
+
+    return () => clearTimeout(timer);
+  }, [messages]);
+
+  const handleSearchSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      goToChat({
+        other_user_id,
+        search,
+        users_page: 1,
+        messages_page: chats?.current_page ?? 1,
+      });
+    },
+    [chats?.current_page, goToChat, other_user_id, search],
+  );
+
+  const handleUserPage = useCallback(
+    (nextPage: number) => {
+      goToChat({
+        other_user_id,
+        search,
+        users_page: nextPage,
+        messages_page: chats?.current_page ?? 1,
+      });
+    },
+    [chats?.current_page, goToChat, other_user_id, search],
+  );
+
+  const handleMessagesPage = useCallback(
+    (nextPage: number) => {
+      if (!other_user_id) {
+        return;
+      }
+      goToChat({
+        other_user_id,
+        search,
+        users_page: users.current_page,
+        messages_page: nextPage,
+      });
+    },
+    [goToChat, other_user_id, search, users.current_page],
+  );
+
+  const handleSelectUser = useCallback(
+    (selectedUserId: number) => {
+      goToChat({
+        other_user_id: selectedUserId,
+        search,
+        users_page: users.current_page,
+        messages_page: 1,
+      });
+    },
+    [goToChat, search, users.current_page],
+  );
+
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setInput(e.target.value);
+
+      if (other_user_id && e.target.value.trim()) {
+        try {
+          const channel = (echo as any).private?.(`chat.${other_user_id}`);
+          if (channel?.whisper) {
+            channel.whisper('typing', { user_id });
+          }
+        } catch {
+          // noop
+        }
+      }
+    },
+    [other_user_id, user_id],
+  );
+
+  const sendMessage = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!input.trim() || !other_user_id) {
+        return;
+      }
 
       try {
-        const conn = castConnector()?.connection;
-        if (conn) {
-          const handler = (states: any) => setEchoStatus(states.current || conn.state);
-          conn.bind('state_change', handler);
-          return () => {
-            if (channel) channel.stopListening('MessageSent');
-            if (channelName) echo.leaveChannel(channelName as string);
-            if (presenceChannel) (echo as any).leave('chat');
-            conn.unbind('state_change', handler);
-          };
+        const csrf = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content;
+        const socketId = (window as any).Echo?.socketId?.() || '';
+
+        const res = await fetch('/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': csrf || '',
+            'X-Socket-ID': socketId,
+          },
+          credentials: 'same-origin',
+          body: JSON.stringify({
+            other_user_id: other_user_id,
+            message: input.trim(),
+          }),
+        });
+
+        if (!res.ok) {
+          return;
         }
-      } catch {}
-      return () => {
-        if (channel) channel.stopListening('MessageSent');
-        if (channelName) echo.leaveChannel(channelName as string);
-  if (presenceChannel) (echo as any).leave('chat');
-      };
-    };
-    boot();
-  return () => { cancelled = true; if (channel) channel.stopListening('MessageSent'); if (channelName) echo.leaveChannel(channelName as string); if (presenceChannel) (echo as any).leave('chat'); };
-  }, [user_id]);
 
-  const sendMessage = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || !other_user_id) return;
-
-    try {
-      const csrf = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content;
-      if (!csrf) return;
-      const socketId = (window as any).Echo?.socketId?.() || '';
-
-      const res = await fetch('/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
-          'X-CSRF-TOKEN': csrf || '',
-          'X-Socket-ID': socketId
-        },
-        credentials: 'same-origin',
-        body: JSON.stringify({
-          other_user_id: other_user_id,
-          message: input.trim(),
-        })
-      });
-
-      if (res.ok) {
         const created: ChatMessage = await res.json();
-        setMessages(prev => {
-          const exists = prev.some(m => m.id === created.id);
-          if (exists) return prev;
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === created.id)) {
+            return prev;
+          }
           return [...prev, created];
         });
         setInput('');
+      } catch {
+        // noop
       }
-    } catch (err) {
-      console.error('Error sending message:', err);
-    }
-  }, [input, other_user_id]);
-
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setInput(e.target.value);
-
-    if (other_user_id && e.target.value.trim()) {
-      try {
-        const channel = (echo as any).private?.(`chat.${other_user_id}`);
-        if (channel?.whisper) {
-          channel.whisper('typing', { user_id });
-        }
-      } catch {}
-    }
-  }, [other_user_id, user_id]);
-
-  const activeUser = other_user_id ? users.find(u => u.id === other_user_id) : null;
-
-  useEffect(() => {
-    const t = setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-    }, 20);
-    return () => clearTimeout(t);
-  }, [messages, other_user_id]);
+    },
+    [input, other_user_id],
+  );
 
   const breadcrumbs = [
-    { title: 'Strona główna', href: '/' },
-    { title: 'Chat', href: '/chat' }
+    { title: 'Strona glowna', href: '/' },
+    { title: 'Chat', href: '/chat' },
   ];
 
   return (
+    <AppLayout breadcrumbs={breadcrumbs}>
+      <Head title="Chat" />
 
-     <AppLayout breadcrumbs={breadcrumbs}>
-                <Head title="Chat" />
-    <div className="container mx-auto shadow-lg rounded-lg">
-      {/* header */}
-      <div className="px-5 py-5 flex flex-wrap gap-4 items-center bg-white border-b-2">
+      <div className="container mx-auto rounded-lg shadow-lg">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b-2 bg-white px-5 py-5 dark:bg-neutral-900">
+          {activeUser ? (
+            <div className="text-sm text-blue-600 dark:text-blue-300">
+              Aktualnie rozmawiasz z <span className="font-semibold">{activeUser.name}</span>
+            </div>
+          ) : (
+            <div className="text-sm text-gray-400 dark:text-neutral-400">Wybierz uzytkownika aby rozpoczac rozmowe</div>
+          )}
 
-        {activeUser ? (
-          <div className="text-sm text-blue-600">
-            Aktualnie rozmawiasz z <span className="font-semibold">{activeUser.name}</span>
-            <span className="text-gray-400 ml-2">(wydział: #Marketing)</span>
-          </div>
-        ) : (
-          <div className="text-sm text-gray-400">Wybierz użytkownika aby rozpocząć rozmowę</div>
-        )}
-      </div>
-      {/* end header */}
-      {/* Chatting */}
-      <div className="flex flex-row justify-between bg-white">
-        {/* chat list */}
-        <div className="flex flex-col w-2/5 border-r-2 overflow-y-auto">
-          {/* search component */}
-          <div className="border-b-2 py-4 px-2">
-            <input
-              type="text"
-              placeholder="Szukaj użytkownika..."
-              className="py-2 px-3 border-2 border-gray-200 rounded-2xl w-full focus:outline-none focus:border-blue-400"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-          </div>
-          {/* end search component */}
-          {/* user list z bazy */}
-          {(() => {
-            const q = search.trim().toLowerCase();
-            const filtered = users.filter(u => (
-              u.id !== user_id && (
-                !q ||
-                u.name.toLowerCase().includes(q) ||
-                u.email.toLowerCase().includes(q)
-              )
-            ));
-            if (filtered.length === 0) return <div className="p-4 text-sm text-gray-500">Brak wyników</div>;
-            return filtered.map(user => {
-              const isActive = user.id === other_user_id;
-              const online = onlineIds.includes(user.id);
-              return (
-                <button
-                  type="button"
-                  key={user.id}
-                  className={`flex flex-row gap-3 text-left w-full py-3 px-3 items-center border-b hover:bg-gray-50 focus:outline-none ${isActive ? 'bg-blue-50 border-l-4 border-blue-400' : ''}`}
-                  onClick={() => { window.location.href = `/chat?other_user_id=${user.id}`; }}
-                >
-                  <img
-                    src={user.profile?.profile_photo_url || user.avatar || `https://i.pravatar.cc/150?u=${user.id}`}
-                    className="object-cover h-12 w-12 rounded-full"
-                    alt={user.name}
-                  />
-                  <div className="flex flex-col">
-                    <span className="font-medium">{user.name}</span>
-                    <span className="text-xs text-gray-500">{user.email}</span>
-                  </div>
-                  <span className={`ml-auto w-3 h-3 rounded-full ${online ? 'bg-green-500' : 'bg-red-400'} shadow-inner`} title={online ? 'Online' : 'Offline'}></span>
-                </button>
-              );
-            });
-          })()}
-          {/* end user list */}
+          <div className="text-xs text-gray-500">Echo: {echoStatus}</div>
+          <ThemeSwitch className="min-w-50 w-auto bg-transparent" label="Tryb" />
         </div>
-        {/* end chat list */}
-        {/* message */}
-        <div className="w-full flex flex-col h-[calc(100vh-200px)]">
-          <div className="flex-1 px-5 mt-5 space-y-3 overflow-y-auto pr-2 pb-[10vh]">
-            {messages.map(msg => {
-              const isOwn = msg.sender_id === user_id;
-              return (
-                <div key={msg.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
-                  {!isOwn && (
-                    <img
-                      src={activeUser?.profile?.profile_photo_url || activeUser?.avatar || `https://i.pravatar.cc/100?u=${msg.sender_id}`}
-                      className="object-cover h-8 w-8 rounded-full mr-2"
-                      alt="avatar"
-                    />
-                  )}
-                  <div className={`px-4 py-2 rounded-2xl text-sm shadow max-w-[60%] break-words ${isOwn ? 'bg-blue-500 text-white rounded-br-none' : 'bg-gray-200 text-gray-800 rounded-bl-none'}`}>
-                    {msg.message}
-                    <div className="mt-1 text-[10px] opacity-70 text-right">
-                      {new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}
-                    </div>
-                  </div>
-                  {isOwn && (
-                    <img
-                      src={users.find(u => u.id === user_id)?.profile?.profile_photo_url || users.find(u => u.id === user_id)?.avatar || `https://i.pravatar.cc/100?u=${msg.sender_id}`}
-                      className="object-cover h-8 w-8 rounded-full ml-2"
-                      alt="avatar"
-                    />
-                  )}
-                </div>
-              );
-            })}
-            {/* typing indicator */}
-            {isTyping && activeUser && (
-              <div className="flex justify-start">
-                <img
-                  src={activeUser?.profile?.profile_photo_url || activeUser?.avatar || `https://i.pravatar.cc/100?u=${other_user_id}`}
-                  className="object-cover h-8 w-8 rounded-full mr-2"
-                  alt="avatar"
-                />
-                <div className="px-4 py-2 rounded-2xl text-sm shadow bg-gray-200 text-gray-800 rounded-bl-none">
-                  <div className="flex gap-1">
-                    <span className="animate-bounce">.</span>
-                    <span className="animate-bounce" style={{ animationDelay: '0.2s' }}>.</span>
-                    <span className="animate-bounce" style={{ animationDelay: '0.4s' }}>.</span>
-                  </div>
-                </div>
-              </div>
-            )}
-            {/* znacznik końca listy do auto-scroll */}
-            <div ref={messagesEndRef} />
-          </div>
 
-          {/* Sticky input at bottom */}
-          <div className="sticky bottom-0 bg-white border-t px-5 py-4 mt-[5vh]">
-            <form onSubmit={sendMessage}>
+        <div className="flex flex-row justify-between bg-white">
+          <div className="flex w-2/5 flex-col overflow-y-auto border-r-2">
+            <form className="border-b-2 px-2 py-4" onSubmit={handleSearchSubmit}>
               <div className="flex gap-2">
                 <input
-                  className="w-full bg-gray-100 border border-gray-300 py-3 px-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400"
                   type="text"
-                  placeholder={other_user_id ? 'Napisz wiadomość...' : 'Wybierz użytkownika z listy po lewej'}
-                  value={input}
-                  onChange={handleInputChange}
-                  disabled={!other_user_id}
+                  placeholder="Szukaj uzytkownika..."
+                  className="w-full rounded-2xl border-2 border-gray-200 px-3 py-2 focus:border-blue-400 focus:outline-none"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
                 />
-                <button
-                  type="submit"
-                  disabled={!input.trim() || !other_user_id}
-                  className="px-5 rounded-xl bg-blue-500 text-white font-medium disabled:opacity-40"
-                >Wyślij</button>
+                <button type="submit" className="rounded-xl border px-3 text-sm">
+                  Filtruj
+                </button>
               </div>
             </form>
+
+            {users.data.length === 0 ? (
+              <div className="p-4 text-sm text-gray-500">Brak wynikow</div>
+            ) : (
+              users.data.map((user) => {
+                const isActive = user.id === other_user_id;
+                const online = onlineIds.includes(user.id);
+
+                return (
+                  <button
+                    type="button"
+                    key={user.id}
+                    className={`flex w-full flex-row items-center gap-3 border-b px-3 py-3 text-left hover:bg-gray-50 focus:outline-none ${isActive ? 'border-l-4 border-blue-400 bg-blue-50' : ''}`}
+                    onClick={() => handleSelectUser(user.id)}
+                  >
+                    <img
+                      src={user.profile?.profile_photo_url || user.avatar || `https://i.pravatar.cc/150?u=${user.id}`}
+                      className="h-12 w-12 rounded-full object-cover"
+                      alt={user.name}
+                    />
+                    <div className="flex flex-col">
+                      <span className="font-medium">{user.name}</span>
+                      <span className="text-xs text-gray-500">{user.email}</span>
+                    </div>
+                    <span
+                      className={`ml-auto h-3 w-3 rounded-full shadow-inner ${online ? 'bg-green-500' : 'bg-red-400'}`}
+                      title={online ? 'Online' : 'Offline'}
+                    />
+                  </button>
+                );
+              })
+            )}
+
+            <div className="flex items-center justify-between border-t px-3 py-2 text-xs text-gray-600">
+              <button
+                type="button"
+                className="rounded border px-2 py-1 disabled:opacity-40"
+                disabled={users.current_page <= 1}
+                onClick={() => handleUserPage(users.current_page - 1)}
+              >
+                Poprzednia
+              </button>
+              <span>
+                Strona {users.current_page} z {users.last_page}
+              </span>
+              <button
+                type="button"
+                className="rounded border px-2 py-1 disabled:opacity-40"
+                disabled={users.current_page >= users.last_page}
+                onClick={() => handleUserPage(users.current_page + 1)}
+              >
+                Nastepna
+              </button>
+            </div>
+          </div>
+
+          <div className="flex h-[calc(100vh-200px)] w-full flex-col">
+            <div className="flex-1 space-y-3 overflow-y-auto px-5 pb-[10vh] pr-2 pt-5">
+              {messages.map((msg) => {
+                const isOwn = msg.sender_id === user_id;
+                return (
+                  <div key={msg.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
+                    {!isOwn && (
+                      <img
+                        src={activeUser?.profile?.profile_photo_url || activeUser?.avatar || `https://i.pravatar.cc/100?u=${msg.sender_id}`}
+                        className="mr-2 h-8 w-8 rounded-full object-cover"
+                        alt="avatar"
+                      />
+                    )}
+                    <div
+                      className={`max-w-[60%] break-words rounded-2xl px-4 py-2 text-sm shadow ${isOwn ? 'rounded-br-none bg-blue-500 text-white' : 'rounded-bl-none bg-gray-200 text-gray-800'}`}
+                    >
+                      {msg.message}
+                      <div className="mt-1 text-right text-[10px] opacity-70">
+                        {new Date(msg.created_at).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {isTyping && activeUser && (
+                <div className="flex justify-start">
+                  <img
+                    src={activeUser.profile?.profile_photo_url || activeUser.avatar || `https://i.pravatar.cc/100?u=${other_user_id}`}
+                    className="mr-2 h-8 w-8 rounded-full object-cover"
+                    alt="avatar"
+                  />
+                  <div className="rounded-2xl rounded-bl-none bg-gray-200 px-4 py-2 text-sm text-gray-800 shadow">
+                    <div className="flex gap-1">
+                      <span className="animate-bounce">.</span>
+                      <span className="animate-bounce" style={{ animationDelay: '0.2s' }}>
+                        .
+                      </span>
+                      <span className="animate-bounce" style={{ animationDelay: '0.4s' }}>
+                        .
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div ref={messagesEndRef} />
+            </div>
+
+            {chats && chats.last_page > 1 && (
+              <div className="flex items-center justify-between border-t px-5 py-2 text-xs text-gray-600">
+                <button
+                  type="button"
+                  className="rounded border px-2 py-1 disabled:opacity-40"
+                  disabled={chats.current_page <= 1}
+                  onClick={() => handleMessagesPage(chats.current_page - 1)}
+                >
+                  Starsze
+                </button>
+                <span>
+                  Strona {chats.current_page} z {chats.last_page}
+                </span>
+                <button
+                  type="button"
+                  className="rounded border px-2 py-1 disabled:opacity-40"
+                  disabled={chats.current_page >= chats.last_page}
+                  onClick={() => handleMessagesPage(chats.current_page + 1)}
+                >
+                  Nowsze
+                </button>
+              </div>
+            )}
+
+            <div className="sticky bottom-0 mt-[5vh] border-t bg-white px-5 py-4">
+              <form onSubmit={sendMessage}>
+                <div className="flex gap-2">
+                  <input
+                    className="w-full rounded-xl border border-gray-300 bg-gray-100 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    type="text"
+                    placeholder={other_user_id ? 'Napisz wiadomosc...' : 'Wybierz uzytkownika z listy po lewej'}
+                    value={input}
+                    onChange={handleInputChange}
+                    disabled={!other_user_id}
+                  />
+                  <button
+                    type="submit"
+                    disabled={!input.trim() || !other_user_id}
+                    className="rounded-xl bg-blue-500 px-5 font-medium text-white disabled:opacity-40"
+                  >
+                    Wyslij
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
-
       </div>
-    </div>
-
-
-   </AppLayout>
+    </AppLayout>
   );
 };
 

@@ -41,6 +41,11 @@ $order = $this->orderService->getActiveOrdersPaginated(15, $request->all());
 
     public function show($id)
     {
+        $id = filter_var($id, FILTER_VALIDATE_INT);
+        if ($id === false) {
+            abort(404, 'Nieprawidłowy identyfikator zamówienia');
+        }
+
         $order = $this->orderService->find($id);
         if (!$order) {
             abort(404, 'Zamówienie nie znalezione');
@@ -90,6 +95,11 @@ $order = $this->orderService->getActiveOrdersPaginated(15, $request->all());
 
     public function addItem($id)
     {
+        $id = filter_var($id, FILTER_VALIDATE_INT);
+        if ($id === false) {
+            abort(404, 'Nieprawidłowy identyfikator zamówienia');
+        }
+
         $order = $this->orderService->find($id);
         $products = $this->itemsFinishedGoodService->paginate(100, []);
         if (!$order) {
@@ -118,6 +128,11 @@ $order = $this->orderService->getActiveOrdersPaginated(15, $request->all());
 
     public function storeItems(Request $request, $id)
     {
+        $id = filter_var($id, FILTER_VALIDATE_INT);
+        if ($id === false) {
+            abort(404, 'Nieprawidłowy identyfikator zamówienia');
+        }
+
         $order = $this->orderService->find($id);
         if (!$order) {
             abort(404, 'Zamówienie nie znalezione');

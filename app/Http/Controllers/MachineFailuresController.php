@@ -84,7 +84,8 @@ class MachineFailuresController extends Controller
             }
         }
 
-        $data['user_id'] = $user->id;
+        $data['user_id']     = $user->id;
+        $data['reported_at'] = now()->toDateTimeString();
         $this->machineFailureService->createMachineFailure($data, (int) $data['machine_id']);
         return redirect()->route('machines.failures.history.index')->with('success', 'Zgłoszono awarie.');
     }

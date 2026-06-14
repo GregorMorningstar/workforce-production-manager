@@ -273,7 +273,6 @@ const breadcrumbsEmployee = [
                                         // update local numbers
                                         const renumbered = newSteps.map((s, i) => ({ ...s, step_number: i + 1 }));
                                         setStepsState(renumbered);
-
                                         // persist to server
                                         try {
                                             const tokenMeta = document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null;

@@ -309,24 +309,27 @@ export default function MachineFailuresList({ allmachineFailures = [], auth = {}
                                 <td className="p-3 text-sm text-gray-900">{item.reported_at ?? '-'}</td>
 
                                 <td className="p-3">
-                                    <div className="flex items-center gap-2">
-                                        {/* Przyciski: kolejna naprawa oraz podgląd napraw */}
+                                    <div className="flex items-center gap-3 flex-wrap">
+                                        {/* Serwisowanie danej maszyny */}
                                         <button
                                             onClick={() => handleOpenRepairNextStep(item.id)}
-                                            className="p-1.5 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                                            title="Dodaj kolejną naprawę"
-                                            aria-label="Dodaj kolejną naprawę"
+                                            className="inline-flex items-center gap-1.5 px-2 py-1 text-xs text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-md transition-colors"
+                                            title="Serwisuj maszynę"
+                                            aria-label="Serwisuj maszynę"
                                         >
                                             <PlusCircleIcon className="w-4 h-4" />
+                                            <span>Serwisuj</span>
                                         </button>
 
+                                        {/* Lista napraw pozwala przejść do kolejnych etapów naprawy */}
                                         <button
                                             onClick={() => router.get('/machines/failures/fix/list', { barcode: item.barcode })}
-                                            className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                            title="Lista napraw"
-                                            aria-label="Lista napraw"
+                                            className="inline-flex items-center gap-1.5 px-2 py-1 text-xs text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors"
+                                            title="Kolejne etapy naprawy"
+                                            aria-label="Kolejne etapy naprawy"
                                         >
                                             <ListIcon className="w-4 h-4" />
+                                            <span>Etapy naprawy</span>
                                         </button>
 
                                                 {/* only add-repair icons allowed per request - no edit/delete/preview */}

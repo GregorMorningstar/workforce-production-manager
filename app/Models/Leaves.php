@@ -1,12 +1,9 @@
 <?php
-
 namespace App\Models;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\User;
 use App\Models\LeaveBalance;
-
 
 class Leaves extends Model
 {
@@ -26,8 +23,7 @@ class Leaves extends Model
         'approved_by',
         'approved_at',
     ];
-protected static function booted()
-    {
+protected static function booted()    {
         static::created(function ($leaves) {
             $prefix = '4000';
             $id = $leaves->id;
@@ -37,16 +33,13 @@ protected static function booted()
                 $leaves->save();
             }
         });
-
     }
 
-    public function user()
-    {
+    public function user()    {
         return $this->belongsTo(User::class, 'user_id');
     }
 
-    public function leaveBalance()
-    {
+    public function leaveBalance()    {
         return $this->belongsTo(LeaveBalance::class, 'leave_balance_id');
     }
 }

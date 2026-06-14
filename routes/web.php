@@ -120,6 +120,8 @@ Route::middleware(['web', 'auth', 'verified', 'role:moderator'])
         Route::prefix('departments')->group(function () {
             Route::get('/', [DepartamentsController::class, 'moderatorIndex'])->name('departments.index');
             // URL: /moderator/departments
+            Route::get('/active-employees', [DepartamentsController::class, 'activeEmployees'])->name('departments.active_employees');
+            // URL: /moderator/departments/active-employees
             Route::get('/add-new', [DepartamentsController::class, 'create'])->name('departments.create');
             // URL: /moderator/departments/add-new
             Route::post('/add-new', [DepartamentsController::class, 'store'])->name('departments.store');

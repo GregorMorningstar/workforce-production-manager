@@ -5,6 +5,7 @@ import EditFailuresRepairedCard from '@/components/card/edit-failures-repaired-c
 
 type Repair = {
     id: number;
+    machine_failure_id?: number | null;
     barcode?: string | null;
     status?: string | null;
     cost?: number | null;
@@ -209,7 +210,10 @@ export default function MachineFailuresRepariedList({ repairs = [], pagination =
                 {!isReadOnly && (
                     <button
                         className="w-9 h-9 rounded-full bg-green-600 text-white flex items-center justify-center shadow"
-                        onClick={() => router.get(`/machines/failures/fix?barcode=${encodeURIComponent(barcode ?? '')}`)}
+                        onClick={() => {
+                            const fallbackBarcode = barcode ?? repairs[0]?.machineFailure?.machine?.barcode ?? repairs[0]?.barcode ?? '';
+                            router.get(`/machines/failures/fix?barcode=${encodeURIComponent(fallbackBarcode)}`);
+                        }}
                         title="Dodaj naprawę"
                     >
                         +
@@ -296,7 +300,27 @@ export default function MachineFailuresRepariedList({ repairs = [], pagination =
                                 <td className="px-4 py-3">{r.repair_order_no ?? ('Zlecenie #' + r.id)}</td>
                                 {!isReadOnly && (
                                     <td className="px-4 py-3">
-                                        <div className="flex gap-2">
+                                        <div className="flex gap-3 flex-wrap">
+                                            <button
+                                                className="text-sm text-indigo-600 hover:underline"
+                                                onClick={() => {
+                                                    const failureId = r.machineFailure?.id ?? r.machine_failure_id;
+                                                    const rowBarcode = r.machineFailure?.machine?.barcode ?? r.barcode ?? barcode ?? '';
+                                                    if (failureId) {
+                                                        router.get(`/machines/failures/fix?machine_failure_id=${failureId}`);
+                                                        return;
+                                                    }
+                                                    router.get(`/machines/failures/fix?barcode=${encodeURIComponent(rowBarcode)}`);
+                                                }}
+                                            >
+                                                Serwisuj
+                                            </button>
+                                            <button
+                                                className="text-sm text-emerald-700 hover:underline"
+                                                onClick={() => router.get(`/machines/failures/fix/${r.id}`)}
+                                            >
+                                                Dodaj etap
+                                            </button>
                                             <button
                                                 className="text-sm text-blue-600 hover:underline"
                                                 onClick={() => handleEdit(r.id as number)}

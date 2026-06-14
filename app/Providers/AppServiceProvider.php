@@ -46,6 +46,8 @@ class AppServiceProvider extends ServiceProvider
             \App\Repositories\Contracts\MachineFailureRepairRepositoryInterface::class => \App\Repositories\Eloquent\EloquentMachineFailureRepair::class,
             \App\Services\Contracts\OrderServiceInterface::class => \App\Services\OrderService::class,
             \App\Repositories\Contracts\OrderRepositoryInterface::class => \App\Repositories\Eloquent\EloquentOrderRepository::class,
+            \App\Services\Contracts\ChatServiceInterface::class => \App\Services\ChatService::class,
+            \App\Repositories\Contracts\ChatRepositoryInterface::class => \App\Repositories\Eloquent\EloquentChatRepository::class,
 
             ];
 

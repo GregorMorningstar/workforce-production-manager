@@ -102,70 +102,44 @@ class User extends Authenticatable
             ]);
         });
     }
-
     /**
      * Department assigned to the user (single).
      */
-    public function department(): BelongsTo
-    {
+    public function department(): BelongsTo    {
         return $this->belongsTo(Department::class, 'department_id');
     }
-
-    /**
-     * Departments this user belongs to (many-to-many via `department_user` pivot).
-     */
-    // If a user can belong to one department, use the `department()` relation below.
-
-    // user może być właścicielem wielu maszyn (pole user_id w machines)
-    public function ownedMachines(): HasMany
-    {
+     // user może być właścicielem wielu maszyn (pole user_id w machines)
+    public function ownedMachines(): HasMany    {
         return $this->hasMany(Machines::class, 'user_id');
     }
-
     // user może być przypisany do wielu maszyn przez pivot machine_user
-    public function machines()
-    {
+    public function machines()    {
         return $this->hasMany(Machines::class, 'user_id');
-
-
     }
-
     //relacja z MachineFailure (1:N)
-    public function machineFailures(): HasMany
-    {
+    public function machineFailures(): HasMany    {
         return $this->hasMany(MachineFailure::class, 'user_id');
     }
-
     //relacja z Leaves (1:N)
-    public function leaves(): HasMany
-    {
+    public function leaves(): HasMany    {
         return $this->hasMany(Leaves::class, 'user_id');
     }
-
     //relacja z UserProfile (1:1)
-    public function profile(): HasOne
-    {
+    public function profile(): HasOne    {
         return $this->hasOne(UserProfile::class);
     }
-
     /**
      * Accessor for avatar - returns profile photo URL if exists
      */
-    public function getAvatarAttribute(): ?string
-    {
+    public function getAvatarAttribute(): ?string    {
         return $this->profile?->profile_photo_url;
     }
-
-    public function schoolCertificates(): HasMany
-    {
+    public function schoolCertificates(): HasMany    {
         return $this->hasMany(SchoolCertificate::class);
     }
-
-    public function employmentCertificates(): HasMany
-    {
+    public function employmentCertificates(): HasMany    {
         return $this->hasMany(EmploymentCertificate::class);
     }
-
     // relacja z LeaveBalance (1:N)
     public function leaves_balance(): HasMany
     {

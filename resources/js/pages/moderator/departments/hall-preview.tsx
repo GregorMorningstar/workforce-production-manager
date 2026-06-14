@@ -297,12 +297,10 @@ export default function DepartmentHallPreview() {
   useEffect(() => {
     setLocalMachines(machines ?? []);
   }, [machines]);
-
   const addWarehouse = useCallback(() => {
     const id = `warehouse-${Date.now()}`;
     setNodes((current) => [
-      ...current,
-      {
+      ...current,      {
         id,
         position: { x: 120, y: 120 },
         data: { label: "Magazyn", kind: 'warehouse' },
